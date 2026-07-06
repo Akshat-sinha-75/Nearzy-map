@@ -1,0 +1,19 @@
+.map-view-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Ensure Leaflet zoom controls don't overlap with the Filter Panel */
+.leaflet-control-container .leaflet-top.leaflet-left {
+  top: 20px;
+  left: 360px; /* Push to the right of the filter panel */
+}
+
+@media (max-width: 600px) {
+  .leaflet-control-container .leaflet-top.leaflet-left {
+    top: 50vh;
+    left: 10px;
+  }
+}
