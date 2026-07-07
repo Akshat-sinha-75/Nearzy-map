@@ -1,6 +1,5 @@
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
-import { useState, useEffect } from "react";
-import L from "leaflet";
+import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
+import { useState } from "react";
 import { supabase } from "./supabaseClient";
 import "./AddShop.css";
 import "./fixLeaflet";
