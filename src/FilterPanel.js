@@ -1,5 +1,6 @@
 import React from 'react';
 import './FilterPanel.css';
+import { COLOR_PALETTES } from './utils/markers';
 
 function FilterPanel({ 
   filters, 
@@ -7,7 +8,8 @@ function FilterPanel({
   isRadiusMode, 
   setIsRadiusMode,
   radiusCenter,
-  setRadiusCenter
+  setRadiusCenter,
+  filteredShops
 }) {
 
   const handleFilterChange = (e) => {
@@ -24,19 +26,79 @@ function FilterPanel({
     setIsRadiusMode(false);
   };
 
+  const clearAllFilters = () => {
+    setFilters(prev => ({
+      ...prev,
+      colorBy: 'all',
+      category: 'All',
+      sub_category: 'All',
+      model: 'All',
+      willing_to_shelf: false,
+      visited: false,
+      online_order: false,
+      radiusKm: ''
+    }));
+    setRadiusCenter(null);
+    setIsRadiusMode(false);
+  };
+
+  const currentPalette = COLOR_PALETTES[filters.colorBy];
+
+  // Dynamically generate legend with counts
+  const legendItems = {};
+  if (currentPalette && filteredShops) {
+    filteredShops.forEach(shop => {
+      const { hex, name } = currentPalette.getColor(shop);
+      if (!legendItems[name]) {
+        legendItems[name] = { color: hex, label: name, count: 0 };
+      }
+      legendItems[name].count++;
+    });
+  }
+  const sortedLegend = Object.values(legendItems).sort((a, b) => b.count - a.count);
+
   return (
     <div className="filter-panel">
-      <h3>Data Filters</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h3 style={{ margin: 0 }}>Data Filters</h3>
+        <button 
+          onClick={clearAllFilters} 
+          style={{
+            background: 'none', border: 'none', color: 'var(--accent-primary)', 
+            cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, padding: 0
+          }}
+        >
+          Clear All
+        </button>
+      </div>
 
       <div className="filter-group">
         <label>Color By:</label>
         <select name="colorBy" value={filters.colorBy} onChange={handleFilterChange}>
+          <option value="all">All (Default)</option>
+          <option value="sub_category">Sub Category</option>
+          <option value="willing_to_shelf">Willing to Shelf</option>
           <option value="category">Category</option>
           <option value="model">Model (Rental/Commission)</option>
-          <option value="willing_to_shelf">Willing to Shelf</option>
           <option value="visited">Visited Status</option>
         </select>
       </div>
+      
+      {sortedLegend.length > 0 && (
+        <div className="legend-container">
+          <div className="legend-header" style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px'}}>
+            Showing counts for {filteredShops.length} matching shops
+          </div>
+          {sortedLegend.map(item => (
+            <div key={item.label} className="legend-item">
+              <span className="legend-color" style={{ backgroundColor: item.color }}></span>
+              <span className="legend-label">
+                {item.label} <span style={{fontWeight: 600, marginLeft: '4px', color: 'var(--text-main)'}}>({item.count})</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="filter-divider" />
 

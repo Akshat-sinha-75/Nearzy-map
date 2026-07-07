@@ -30,6 +30,34 @@
   color: var(--text-main);
 }
 
+.legend-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(0,0,0,0.03);
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.legend-label {
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
 .filter-group {
   display: flex;
   flex-direction: column;

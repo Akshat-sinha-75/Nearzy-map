@@ -1,6 +1,28 @@
-import { useState } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import { useState, useEffect } from "react";
+import L from "leaflet";
 import { supabase } from "./supabaseClient";
 import "./AddShop.css";
+import "./fixLeaflet";
+
+function MapCenterUpdater({ setLocation, isDragging, setIsDragging }) {
+  const map = useMapEvents({
+    dragstart: () => {
+      setIsDragging(true);
+    },
+    dragend: () => {
+      setIsDragging(false);
+      const center = map.getCenter();
+      setLocation(center.lat, center.lng);
+    },
+    zoomend: () => {
+      const center = map.getCenter();
+      setLocation(center.lat, center.lng);
+    }
+  });
+
+  return null;
+}
 
 const GOODS_CATEGORIES = [
   "Grocery", "Electronics", "Stationary", "Pharmacy", "Dairy Items", "Clothing",
@@ -61,15 +83,19 @@ function AddShop() {
     });
   };
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [mapKey, setMapKey] = useState(1); // Force map re-render on "Locate Me"
+
+  const setLocation = (lat, lng) => {
+    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+  };
+
   const handleLocateMe = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setFormData(prev => ({
-            ...prev,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          }));
+          setLocation(position.coords.latitude, position.coords.longitude);
+          setMapKey(k => k + 1); // This forces the MapContainer to re-center
         },
         (error) => {
           console.error("Error getting location:", error);
@@ -89,18 +115,6 @@ function AddShop() {
     const finalMedium = formData.medium_of_online_orders === "Any other" 
       ? formData.custom_medium 
       : formData.medium_of_online_orders;
-
-    // The sub_category actually goes to 'category' in the database (based on previous schema)
-    // Wait, the user said "Category :- Goods or Service", "sub_category".
-    // I will pass 'category' as Goods/Service and append sub_category, or if schema has sub_category I'll add it.
-    // I'll send both, maybe Supabase accepts extra fields, or I should join them.
-    // Assuming schema is: category (text). I'll just format it as "Goods - Grocery" if sub_category isn't an explicit column.
-    // Or I'll just pass sub_category if it exists. The user provided "Category :- Goods or Service \n sub_category". I will assume they meant `category` and `sub_category`. But if `sub_category` is not in the schema, it might fail. To be safe, I'll combine them or send as is if there's no error. Actually, I'll send it as `category`. Wait, I'll assume they updated the schema with `sub_category`. 
-    // Wait! Let me just append it for safety. No, they probably added it. I'll include it.
-    
-    // I will use `category` and `sub_category`. If `sub_category` doesn't exist, Supabase will throw error, but I will include it as requested. Let me just combine them into `category` if sub_category is not explicitly in the DB schema they provided earlier.
-    // Earlier schema: `category` TEXT. No `sub_category`. 
-    // I will save `category` as "Goods - Grocery".
 
     const dataToSubmit = {
       ...formData,
@@ -151,6 +165,59 @@ function AddShop() {
         {/* 1. Location */}
         <div className="form-section">
           <h3>1. Location</h3>
+          <p className="text-muted" style={{fontSize: '0.85rem', marginBottom: '10px', marginTop: '-10px'}}>
+            Drag the map to precisely place the crosshair on the shop's location.
+          </p>
+          
+          <div className="map-picker-container" style={{ position: "relative", height: "300px", width: "100%", marginBottom: "15px", borderRadius: "8px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
+            <MapContainer
+              key={mapKey}
+              center={formData.latitude && formData.longitude ? [formData.latitude, formData.longitude] : [25.5941, 85.1376]}
+              zoom={14}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; CARTO'
+              />
+              <MapCenterUpdater 
+                setLocation={setLocation} 
+                isDragging={isDragging}
+                setIsDragging={setIsDragging}
+              />
+            </MapContainer>
+            
+            {/* Center Crosshair Overlay */}
+            <div className={`center-crosshair ${isDragging ? 'dragging' : ''}`} 
+                 style={{
+                   position: 'absolute', top: '50%', left: '50%', 
+                   transform: `translate(-50%, ${isDragging ? '-100%' : '-50%'})`,
+                   transition: 'transform 0.2s ease',
+                   pointerEvents: 'none', zIndex: 1000,
+                   display: 'flex', flexDirection: 'column', alignItems: 'center'
+                 }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <div style={{
+                width: '4px', height: '4px', background: '#e11d48', borderRadius: '50%',
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                opacity: isDragging ? 0 : 1, transition: 'opacity 0.2s ease'
+              }}/>
+            </div>
+            
+            {/* Small shadow to indicate point */}
+            <div style={{
+               position: 'absolute', top: '50%', left: '50%', 
+               width: '12px', height: '6px', background: 'rgba(0,0,0,0.3)',
+               borderRadius: '50%', transform: 'translate(-50%, -50%)',
+               filter: 'blur(2px)', pointerEvents: 'none', zIndex: 999,
+               opacity: isDragging ? 0.8 : 0, transition: 'opacity 0.2s ease'
+            }}/>
+          </div>
+
           <div className="location-group">
             <div className="form-group">
               <label>Latitude:</label>
