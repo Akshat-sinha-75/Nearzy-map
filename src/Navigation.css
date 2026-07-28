@@ -17,6 +17,13 @@
   letter-spacing: -0.5px;
 }
 
+/* Desktop links - shown inline on desktop */
+.navbar-links-desktop {
+  display: flex;
+  gap: 20px;
+}
+
+/* Old hamburger + dropdown - used as intermediate breakpoint fallback */
 .hamburger {
   display: none;
   flex-direction: column;
@@ -33,7 +40,7 @@
 }
 
 .navbar-links {
-  display: flex;
+  display: none;
   gap: 20px;
 }
 
@@ -52,43 +59,74 @@
   color: var(--text-main);
 }
 
+/* ----- Mobile Bottom Action Bar ----- */
+.mobile-bottom-bar {
+  display: none;
+}
+
+/* ----- Responsive: Mobile (≤768px) ----- */
 @media (max-width: 768px) {
+  .navbar {
+    padding: 12px 16px;
+  }
+
+  /* Hide desktop inline links */
+  .navbar-links-desktop {
+    display: none;
+  }
+
+  /* Hide the old hamburger + dropdown entirely on mobile */
   .hamburger {
-    display: flex;
-  }
-  
-  .hamburger.active .bar:nth-child(1) {
-    transform: translateY(8px) rotate(45deg);
-  }
-  .hamburger.active .bar:nth-child(2) {
-    opacity: 0;
-  }
-  .hamburger.active .bar:nth-child(3) {
-    transform: translateY(-8px) rotate(-45deg);
+    display: none !important;
   }
 
   .navbar-links {
-    position: absolute;
-    top: 60px;
+    display: none !important;
+  }
+
+  /* Show mobile bottom action bar */
+  .mobile-bottom-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
     left: 0;
-    width: 100%;
+    right: 0;
+    z-index: 9998;
     background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .bottom-bar-btn {
+    flex: 1;
+    display: flex;
     flex-direction: column;
-    padding: 20px;
-    box-shadow: var(--shadow-md);
-    border-bottom: 1px solid var(--border-color);
-    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
-    transition: clip-path 0.4s ease-in-out;
-    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .navbar-links.open {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+  .bottom-bar-btn svg {
+    transition: all 0.2s ease;
   }
 
-  .nav-link {
-    width: 100%;
-    text-align: center;
-    padding: 12px;
+  .bottom-bar-btn.active {
+    color: var(--accent-primary);
+    background: rgba(37, 99, 235, 0.08);
+  }
+
+  .bottom-bar-btn:active {
+    transform: scale(0.95);
   }
 }

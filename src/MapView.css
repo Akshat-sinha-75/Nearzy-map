@@ -11,9 +11,15 @@
   left: 360px; /* Push to the right of the filter panel */
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .leaflet-control-container .leaflet-top.leaflet-left {
-    top: 50vh;
-    left: 10px;
+    top: 12px;
+    left: auto;
+    right: 12px;
+  }
+
+  /* Move zoom controls to top-right on mobile to avoid clash with filter toggle */
+  .leaflet-control-container .leaflet-top.leaflet-right {
+    top: 12px;
   }
 }

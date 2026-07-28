@@ -196,6 +196,7 @@
   .add-shop-container {
     margin: 20px;
     padding: 20px;
+    padding-bottom: 80px; /* room for mobile bottom bar */
   }
   .location-group {
     grid-template-columns: 1fr;

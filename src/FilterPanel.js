@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './FilterPanel.css';
 import { COLOR_PALETTES } from './utils/markers';
 
@@ -11,6 +11,7 @@ function FilterPanel({
   setRadiusCenter,
   filteredShops
 }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleFilterChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -57,165 +58,212 @@ function FilterPanel({
   }
   const sortedLegend = Object.values(legendItems).sort((a, b) => b.count - a.count);
 
-  return (
-    <div className="filter-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h3 style={{ margin: 0 }}>Data Filters</h3>
-        <button 
-          onClick={clearAllFilters} 
-          style={{
-            background: 'none', border: 'none', color: 'var(--accent-primary)', 
-            cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, padding: 0
-          }}
-        >
-          Clear All
-        </button>
-      </div>
+  // Count active filters for the badge
+  const activeFilterCount = [
+    filters.colorBy !== 'all',
+    filters.category !== 'All',
+    filters.sub_category && filters.sub_category !== 'All',
+    filters.model !== 'All',
+    filters.willing_to_shelf,
+    filters.visited,
+    filters.online_order,
+    radiusCenter && filters.radiusKm
+  ].filter(Boolean).length;
 
-      <div className="filter-group">
-        <label>Color By:</label>
-        <select name="colorBy" value={filters.colorBy} onChange={handleFilterChange}>
-          <option value="all">All (Default)</option>
-          <option value="sub_category">Sub Category</option>
-          <option value="willing_to_shelf">Willing to Shelf</option>
-          <option value="category">Category</option>
-          <option value="model">Model (Rental/Commission)</option>
-          <option value="visited">Visited Status</option>
-        </select>
-      </div>
-      
-      {sortedLegend.length > 0 && (
-        <div className="legend-container">
-          <div className="legend-header" style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px'}}>
-            Showing counts for {filteredShops.length} matching shops
-          </div>
-          {sortedLegend.map(item => (
-            <div key={item.label} className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: item.color }}></span>
-              <span className="legend-label">
-                {item.label} <span style={{fontWeight: 600, marginLeft: '4px', color: 'var(--text-main)'}}>({item.count})</span>
-              </span>
-            </div>
-          ))}
-        </div>
+  return (
+    <>
+      {/* Mobile filter toggle button */}
+      <button
+        className="mobile-filter-toggle"
+        onClick={() => setMobileOpen(!mobileOpen)}
+        aria-label="Toggle Filters"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="6" y1="12" x2="18" y2="12"/>
+          <line x1="8" y1="18" x2="16" y2="18"/>
+        </svg>
+        {activeFilterCount > 0 && (
+          <span className="filter-badge">{activeFilterCount}</span>
+        )}
+      </button>
+
+      {/* Backdrop overlay for mobile */}
+      {mobileOpen && (
+        <div className="mobile-filter-backdrop" onClick={() => setMobileOpen(false)} />
       )}
 
-      <div className="filter-divider" />
+      <div className={`filter-panel ${mobileOpen ? 'mobile-open' : ''}`}>
+        {/* Mobile close button inside panel */}
+        <button
+          className="mobile-filter-close"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close Filters"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
 
-      <div className="filter-group">
-        <label>Category:</label>
-        <select name="category" value={filters.category} onChange={(e) => {
-          // When category changes, reset sub_category to 'All'
-          handleFilterChange(e);
-          setFilters(prev => ({ ...prev, sub_category: 'All' }));
-        }}>
-          <option value="All">All</option>
-          <option value="Goods">Goods</option>
-          <option value="Service">Service</option>
-        </select>
-      </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0 }}>Data Filters</h3>
+          <button 
+            onClick={clearAllFilters} 
+            style={{
+              background: 'none', border: 'none', color: 'var(--accent-primary)', 
+              cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, padding: 0
+            }}
+          >
+            Clear All
+          </button>
+        </div>
 
-      {filters.category !== 'All' && (
         <div className="filter-group">
-          <label>Sub Category:</label>
-          <select name="sub_category" value={filters.sub_category} onChange={handleFilterChange}>
-            <option value="All">All</option>
-            {filters.category === 'Goods' ? (
-              <>
-                <option value="Grocery">Grocery</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Stationary">Stationary</option>
-                <option value="Pharmacy">Pharmacy</option>
-                <option value="Dairy Items">Dairy Items</option>
-                <option value="Clothing">Clothing</option>
-                <option value="Gift & Toys">Gift & Toys</option>
-                <option value="Cosmetics">Cosmetics</option>
-                <option value="Foot Wears">Foot Wears</option>
-                <option value="jewellery store">jewellery store</option>
-                <option value="Pet Shops">Pet Shops</option>
-                <option value="Sports Shops">Sports Shops</option>
-                <option value="Flowers">Flowers</option>
-                <option value="Puja Stores">Puja Stores</option>
-                <option value="Liquor Shops">Liquor Shops</option>
-              </>
-            ) : (
-              <>
-                <option value="SALON">SALON</option>
-                <option value="AC SERVICES">AC SERVICES</option>
-                <option value="LAUNDRY">LAUNDRY</option>
-                <option value="CAR WASH & REPAIR">CAR WASH & REPAIR</option>
-                <option value="LIBRARY">LIBRARY</option>
-                <option value="TURFS & GAMING ZONES">TURFS & GAMING ZONES</option>
-                <option value="EVENT PLANNERS">EVENT PLANNERS</option>
-                <option value="BANQUET HALL & EVENT PLACES">BANQUET HALL & EVENT PLACES</option>
-                <option value="ACADEMIES (CRICKET / MUSIC / DANCE)">ACADEMIES (CRICKET / MUSIC / DANCE)</option>
-                <option value="GYMS">GYMS</option>
-                <option value="HOSTEL / PGs">HOSTEL / PGs</option>
-                <option value="RENTAL ROOMS">RENTAL ROOMS</option>
-                <option value="TATTOO PARLOURS">TATTOO PARLOURS</option>
-              </>
-            )}
+          <label>Color By:</label>
+          <select name="colorBy" value={filters.colorBy} onChange={handleFilterChange}>
+            <option value="all">All (Default)</option>
+            <option value="sub_category">Sub Category</option>
+            <option value="willing_to_shelf">Willing to Shelf</option>
+            <option value="category">Category</option>
+            <option value="model">Model (Rental/Commission)</option>
+            <option value="visited">Visited Status</option>
           </select>
         </div>
-      )}
-
-      <div className="filter-group">
-        <label>Model:</label>
-        <select name="model" value={filters.model} onChange={handleFilterChange}>
-          <option value="All">All</option>
-          <option value="Rental">Rental</option>
-          <option value="Commission">Commission</option>
-        </select>
-      </div>
-
-      <div className="filter-group checkboxes">
-        <label className="checkbox-label">
-          <input type="checkbox" name="willing_to_shelf" checked={filters.willing_to_shelf} onChange={handleFilterChange} />
-          Willing to Shelf Only
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" name="visited" checked={filters.visited} onChange={handleFilterChange} />
-          Visited Only
-        </label>
-        <label className="checkbox-label">
-          <input type="checkbox" name="online_order" checked={filters.online_order} onChange={handleFilterChange} />
-          Accepts Online Orders
-        </label>
-      </div>
-
-      <div className="filter-divider" />
-
-      <div className="radius-control">
-        <h4>Spatial Filter</h4>
-        {!radiusCenter ? (
-          <button 
-            className={`btn-radius toggle ${isRadiusMode ? 'active' : ''}`}
-            onClick={() => setIsRadiusMode(!isRadiusMode)}
-          >
-            {isRadiusMode ? 'Click on map to select center...' : 'Set Radius Center (Click Map)'}
-          </button>
-        ) : (
-          <div className="radius-active">
-            <div className="filter-group">
-              <label>Radius (km):</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                min="0.1"
-                name="radiusKm" 
-                value={filters.radiusKm} 
-                onChange={handleFilterChange} 
-                placeholder="e.g. 3"
-              />
+        
+        {sortedLegend.length > 0 && (
+          <div className="legend-container">
+            <div className="legend-header" style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px'}}>
+              Showing counts for {filteredShops.length} matching shops
             </div>
-            <button className="btn-radius clear" onClick={clearRadius}>
-              Clear Radius Filter
-            </button>
+            {sortedLegend.map(item => (
+              <div key={item.label} className="legend-item">
+                <span className="legend-color" style={{ backgroundColor: item.color }}></span>
+                <span className="legend-label">
+                  {item.label} <span style={{fontWeight: 600, marginLeft: '4px', color: 'var(--text-main)'}}>({item.count})</span>
+                </span>
+              </div>
+            ))}
           </div>
         )}
-      </div>
 
-    </div>
+        <div className="filter-divider" />
+
+        <div className="filter-group">
+          <label>Category:</label>
+          <select name="category" value={filters.category} onChange={(e) => {
+            // When category changes, reset sub_category to 'All'
+            handleFilterChange(e);
+            setFilters(prev => ({ ...prev, sub_category: 'All' }));
+          }}>
+            <option value="All">All</option>
+            <option value="Goods">Goods</option>
+            <option value="Service">Service</option>
+          </select>
+        </div>
+
+        {filters.category !== 'All' && (
+          <div className="filter-group">
+            <label>Sub Category:</label>
+            <select name="sub_category" value={filters.sub_category} onChange={handleFilterChange}>
+              <option value="All">All</option>
+              {filters.category === 'Goods' ? (
+                <>
+                  <option value="Grocery">Grocery</option>
+                  <option value="Electronics">Electronics</option>
+                  <option value="Stationary">Stationary</option>
+                  <option value="Pharmacy">Pharmacy</option>
+                  <option value="Dairy Items">Dairy Items</option>
+                  <option value="Clothing">Clothing</option>
+                  <option value="Gift & Toys">Gift & Toys</option>
+                  <option value="Cosmetics">Cosmetics</option>
+                  <option value="Foot Wears">Foot Wears</option>
+                  <option value="jewellery store">jewellery store</option>
+                  <option value="Pet Shops">Pet Shops</option>
+                  <option value="Sports Shops">Sports Shops</option>
+                  <option value="Flowers">Flowers</option>
+                  <option value="Puja Stores">Puja Stores</option>
+                  <option value="Liquor Shops">Liquor Shops</option>
+                </>
+              ) : (
+                <>
+                  <option value="SALON">SALON</option>
+                  <option value="AC SERVICES">AC SERVICES</option>
+                  <option value="LAUNDRY">LAUNDRY</option>
+                  <option value="CAR WASH & REPAIR">CAR WASH & REPAIR</option>
+                  <option value="LIBRARY">LIBRARY</option>
+                  <option value="TURFS & GAMING ZONES">TURFS & GAMING ZONES</option>
+                  <option value="EVENT PLANNERS">EVENT PLANNERS</option>
+                  <option value="BANQUET HALL & EVENT PLACES">BANQUET HALL & EVENT PLACES</option>
+                  <option value="ACADEMIES (CRICKET / MUSIC / DANCE)">ACADEMIES (CRICKET / MUSIC / DANCE)</option>
+                  <option value="GYMS">GYMS</option>
+                  <option value="HOSTEL / PGs">HOSTEL / PGs</option>
+                  <option value="RENTAL ROOMS">RENTAL ROOMS</option>
+                  <option value="TATTOO PARLOURS">TATTOO PARLOURS</option>
+                </>
+              )}
+            </select>
+          </div>
+        )}
+
+        <div className="filter-group">
+          <label>Model:</label>
+          <select name="model" value={filters.model} onChange={handleFilterChange}>
+            <option value="All">All</option>
+            <option value="Rental">Rental</option>
+            <option value="Commission">Commission</option>
+          </select>
+        </div>
+
+        <div className="filter-group checkboxes">
+          <label className="checkbox-label">
+            <input type="checkbox" name="willing_to_shelf" checked={filters.willing_to_shelf} onChange={handleFilterChange} />
+            Willing to Shelf Only
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" name="visited" checked={filters.visited} onChange={handleFilterChange} />
+            Visited Only
+          </label>
+          <label className="checkbox-label">
+            <input type="checkbox" name="online_order" checked={filters.online_order} onChange={handleFilterChange} />
+            Accepts Online Orders
+          </label>
+        </div>
+
+        <div className="filter-divider" />
+
+        <div className="radius-control">
+          <h4>Spatial Filter</h4>
+          {!radiusCenter ? (
+            <button 
+              className={`btn-radius toggle ${isRadiusMode ? 'active' : ''}`}
+              onClick={() => setIsRadiusMode(!isRadiusMode)}
+            >
+              {isRadiusMode ? 'Click on map to select center...' : 'Set Radius Center (Click Map)'}
+            </button>
+          ) : (
+            <div className="radius-active">
+              <div className="filter-group">
+                <label>Radius (km):</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0.1"
+                  name="radiusKm" 
+                  value={filters.radiusKm} 
+                  onChange={handleFilterChange} 
+                  placeholder="e.g. 3"
+                />
+              </div>
+              <button className="btn-radius clear" onClick={clearRadius}>
+                Clear Radius Filter
+              </button>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </>
   );
 }
 
