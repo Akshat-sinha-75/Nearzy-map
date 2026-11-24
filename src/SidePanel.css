@@ -46,6 +46,29 @@
   padding-bottom: 15px;
 }
 
+.sidepanel-actions {
+  display: flex;
+  gap: 10px;
+  margin: -6px 0 18px;
+}
+
+.sp-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid var(--border-color);
+}
+
+.sp-btn.edit { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+.sp-btn.edit:hover { background: var(--accent-hover); }
+.sp-btn.delete { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+.sp-btn.delete:hover { background: #fee2e2; }
+.sp-btn:disabled { opacity: 0.6; cursor: default; }
+
 .sidepanel p {
   margin: 12px 0;
   font-size: 0.95rem;

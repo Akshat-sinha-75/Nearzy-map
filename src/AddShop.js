@@ -1,5 +1,6 @@
 import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import "./AddShop.css";
 import "./fixLeaflet";
@@ -36,36 +37,84 @@ const SERVICE_CATEGORIES = [
   "RENTAL ROOMS", "TATTOO PARLOURS"
 ];
 
-function AddShop() {
-  const [formData, setFormData] = useState({
-    shop_name: "",
-    category: "",
-    sub_category: "",
-    size: "",
-    model: "",
-    rental_price_or_commission: "",
-    no_of_orders_per_day: "",
-    online_order: false,
-    medium_of_online_orders: "",
-    custom_medium: "",
-    visited: false,
-    offers_discount_regularly: false,
-    gst_holder: false,
-    billing_system: false,
-    billing_system_description: "",
-    inventory_management: false,
-    inventory_management_description: "",
-    distribution: "",
-    restocking_frequency_in_days: "",
-    model_acceptance: false,
-    feedback: "",
-    longitude: "",
-    latitude: "",
-    willing_to_shelf: false,
-  });
+const ONLINE_MEDIUMS = ["Flipkart", "Amazon", "Myntra", "Meesho"];
 
+// A blank form. Every key except custom_medium is a column in the shops table.
+const EMPTY_FORM = {
+  shop_name: "",
+  category: "",
+  sub_category: "",
+  size: "",
+  model: "",
+  rental_price_or_commission: "",
+  no_of_orders_per_day: "",
+  online_order: false,
+  medium_of_online_orders: "",
+  custom_medium: "",
+  visited: false,
+  offers_discount_regularly: false,
+  gst_holder: false,
+  billing_system: false,
+  billing_system_description: "",
+  inventory_management: false,
+  inventory_management_description: "",
+  distribution: "",
+  restocking_frequency_in_days: "",
+  model_acceptance: false,
+  feedback: "",
+  longitude: "",
+  latitude: "",
+  willing_to_shelf: false,
+};
+
+// Turn a saved shop row back into form values (nulls become empty fields).
+function rowToForm(row) {
+  const form = { ...EMPTY_FORM };
+  Object.keys(EMPTY_FORM).forEach((k) => {
+    if (k in row && row[k] !== null && row[k] !== undefined) form[k] = row[k];
+  });
+  const medium = row.medium_of_online_orders;
+  if (row.online_order && medium && !ONLINE_MEDIUMS.includes(medium)) {
+    form.medium_of_online_orders = "Any other";
+    form.custom_medium = medium;
+  }
+  return form;
+}
+
+const toNumber = (v, parse) => (v === "" || v === null || v === undefined ? null : parse(v));
+
+function AddShop() {
+  const { id } = useParams(); // present when editing an existing shop
+  const isEdit = Boolean(id);
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
+  const [loadingShop, setLoadingShop] = useState(isEdit);
   const [message, setMessage] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [mapKey, setMapKey] = useState(1); // Force map re-render on "Locate Me"
+
+  // Editing: load the shop once
+  useEffect(() => {
+    if (!id) {
+      setFormData(EMPTY_FORM);
+      setLoadingShop(false);
+      return;
+    }
+    let alive = true;
+    setLoadingShop(true);
+    supabase.from("shops").select("*").eq("id", id).maybeSingle().then(({ data, error }) => {
+      if (!alive) return;
+      if (error || !data) setMessage("Error: couldn't load this shop.");
+      else {
+        setFormData(rowToForm(data));
+        setMapKey((k) => k + 1);
+      }
+      setLoadingShop(false);
+    });
+    return () => { alive = false; };
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -81,9 +130,6 @@ function AddShop() {
       return newData;
     });
   };
-
-  const [isDragging, setIsDragging] = useState(false);
-  const [mapKey, setMapKey] = useState(1); // Force map re-render on "Locate Me"
 
   const setLocation = (lat, lng) => {
     setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
@@ -106,46 +152,59 @@ function AddShop() {
     }
   };
 
+  const priceIsPercent = formData.model === "Commission";
+  const priceLabel = formData.model === "Rental"
+    ? "Monthly rent offered (₹):"
+    : priceIsPercent ? "Commission offered (% of each order):" : "Rent (₹/month) or commission (%):";
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setMessage("");
 
-    const finalMedium = formData.medium_of_online_orders === "Any other" 
-      ? formData.custom_medium 
+    const price = toNumber(formData.rental_price_or_commission, parseFloat);
+    if (priceIsPercent && price !== null && (price < 0 || price > 100)) {
+      setMessage("Error: commission must be a percentage between 0 and 100.");
+      return;
+    }
+
+    setLoading(true);
+    const finalMedium = formData.medium_of_online_orders === "Any other"
+      ? formData.custom_medium.trim()
       : formData.medium_of_online_orders;
 
     const dataToSubmit = {
       ...formData,
-      category: formData.category,
-      sub_category: formData.sub_category,
-      medium_of_online_orders: formData.online_order ? finalMedium : null,
-      rental_price_or_commission: formData.rental_price_or_commission ? parseFloat(formData.rental_price_or_commission) : null,
-      no_of_orders_per_day: formData.no_of_orders_per_day ? parseInt(formData.no_of_orders_per_day, 10) : null,
-      restocking_frequency_in_days: formData.restocking_frequency_in_days ? parseInt(formData.restocking_frequency_in_days, 10) : null,
-      latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-      longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+      shop_name: formData.shop_name.trim(),
+      medium_of_online_orders: formData.online_order ? finalMedium || null : null,
+      billing_system_description: formData.billing_system ? formData.billing_system_description : "",
+      inventory_management_description: formData.inventory_management ? formData.inventory_management_description : "",
+      rental_price_or_commission: price,
+      no_of_orders_per_day: toNumber(formData.no_of_orders_per_day, (v) => parseInt(v, 10)),
+      restocking_frequency_in_days: toNumber(formData.restocking_frequency_in_days, (v) => parseInt(v, 10)),
+      latitude: toNumber(formData.latitude, parseFloat),
+      longitude: toNumber(formData.longitude, parseFloat),
     };
-    
-    // Remove temporary state fields
-    delete dataToSubmit.custom_medium;
+    delete dataToSubmit.custom_medium; // form-only field
 
-    const { error } = await supabase
-      .from("shops")
-      .insert([dataToSubmit]);
+    const { data, error } = isEdit
+      ? await supabase.from("shops").update(dataToSubmit).eq("id", id).select("id")
+      : await supabase.from("shops").insert([dataToSubmit]).select("id");
 
+    setLoading(false);
     if (error) {
-      console.error("Error inserting data:", error);
+      console.error("Error saving shop:", error);
       setMessage("Error: " + error.message);
+    } else if (!data || data.length === 0) {
+      // The database refused silently: this account isn't allowed to change shops.
+      setMessage("Error: your account doesn't have permission to save shops.");
+    } else if (isEdit) {
+      navigate("/", { state: { focusShopId: id } });
     } else {
       setMessage("Shop added successfully!");
-      setFormData(prev => ({ 
-        ...prev, 
-        shop_name: "", category: "", sub_category: "", size: "", model: "", feedback: "",
-        medium_of_online_orders: "", custom_medium: ""
-      }));
+      // Clear everything for the next shop, but keep the map where it is
+      setFormData(prev => ({ ...EMPTY_FORM, latitude: prev.latitude, longitude: prev.longitude }));
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    setLoading(false);
   };
 
   const getSubCategories = () => {
@@ -154,9 +213,13 @@ function AddShop() {
     return [];
   };
 
+  if (loadingShop) {
+    return <div className="add-shop-container"><h2>Loading shop…</h2></div>;
+  }
+
   return (
     <div className="add-shop-container">
-      <h2>Add New Shop Data</h2>
+      <h2>{isEdit ? "Edit Shop" : "Add New Shop Data"}</h2>
       {message && <div className={`message ${message.includes("Error") ? "error" : "success"}`}>{message}</div>}
       
       <form onSubmit={handleSubmit} className="add-shop-form">
@@ -294,8 +357,8 @@ function AddShop() {
           <h3>3. Operational Details</h3>
           
           <div className="form-group">
-            <label>Rental Price / Commission:</label>
-            <input type="number" step="0.01" name="rental_price_or_commission" value={formData.rental_price_or_commission} onChange={handleChange} />
+            <label>{priceLabel}</label>
+            <input type="number" step="0.01" min="0" max={priceIsPercent ? 100 : undefined} name="rental_price_or_commission" value={formData.rental_price_or_commission} onChange={handleChange} />
           </div>
           
           <div className="form-group">
@@ -315,10 +378,7 @@ function AddShop() {
               <label>Medium of Online Orders:</label>
               <select name="medium_of_online_orders" value={formData.medium_of_online_orders} onChange={handleChange} required>
                 <option value="">Select Medium</option>
-                <option value="Flipkart">Flipkart</option>
-                <option value="Amazon">Amazon</option>
-                <option value="Myntra">Myntra</option>
-                <option value="Meesho">Meesho</option>
+                {ONLINE_MEDIUMS.map(m => <option key={m} value={m}>{m}</option>)}
                 <option value="Any other">Any other</option>
               </select>
               
@@ -388,8 +448,13 @@ function AddShop() {
         </div>
 
         <button type="submit" className="btn submit-btn" disabled={loading}>
-          {loading ? "Submitting..." : "Submit Shop Data"}
+          {loading ? "Saving..." : isEdit ? "Save Changes" : "Submit Shop Data"}
         </button>
+        {isEdit && (
+          <button type="button" className="btn cancel-btn" onClick={() => navigate("/")} disabled={loading}>
+            Cancel
+          </button>
+        )}
       </form>
     </div>
   );

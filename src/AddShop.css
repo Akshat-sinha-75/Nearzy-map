@@ -192,6 +192,19 @@
   box-shadow: none;
 }
 
+.cancel-btn {
+  background-color: #f1f5f9;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 14px;
+  font-size: 1rem;
+  margin-top: -20px;
+}
+
+.cancel-btn:hover {
+  background-color: #e2e8f0;
+}
+
 @media (max-width: 600px) {
   .add-shop-container {
     margin: 20px;

@@ -1,7 +1,9 @@
-import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, useMapEvents } from "react-leaflet";
-import { useEffect, useState, useMemo } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, useMap, useMapEvents } from "react-leaflet";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import SidePanel from "./SidePanel";
+import { formatPrice } from "./utils/format";
 import FilterPanel from "./FilterPanel";
 import { getDistanceInKm } from "./utils/geo";
 import { createPinIcon, COLOR_PALETTES } from "./utils/markers";
@@ -21,7 +23,26 @@ function MapClickHandler({ isRadiusMode, setRadiusCenter, setIsRadiusMode }) {
   return null;
 }
 
+// Zoom the map to fit the surveyed shops the first time they load
+function FitToShops({ shops }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current) return;
+    const pts = shops
+      .filter(s => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+      .map(s => [s.latitude, s.longitude]);
+    if (pts.length === 0) return;
+    done.current = true;
+    if (pts.length === 1) map.setView(pts[0], 16);
+    else map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+  }, [shops, map]);
+  return null;
+}
+
 function MapView() {
+  const location = useLocation();
+  const focusShopId = location.state?.focusShopId;
   const [shops, setShops] = useState([]);
   const [selectedShop, setSelectedShop] = useState(null);
   const [zoom, setZoom] = useState(13);
@@ -30,6 +51,7 @@ function MapView() {
   const [filters, setFilters] = useState({
     colorBy: 'all',
     category: 'All',
+    sub_category: 'All',
     model: 'All',
     willing_to_shelf: false,
     visited: false,
@@ -44,15 +66,25 @@ function MapView() {
     async function fetchShops() {
       const { data, error } = await supabase.from("shops").select("*");
       if (error) console.error(error);
-      else setShops(data);
+      else {
+        setShops(data);
+        // Coming back from "Edit": reopen the shop that was just saved
+        if (focusShopId) setSelectedShop(data.find(s => String(s.id) === String(focusShopId)) || null);
+      }
     }
     fetchShops();
-  }, []);
+  }, [focusShopId]);
+
+  const handleDeleted = (id) => {
+    setShops(prev => prev.filter(s => s.id !== id));
+    setSelectedShop(null);
+  };
 
   const filteredShops = useMemo(() => {
     return shops.filter(shop => {
       // Attribute filters
       if (filters.category !== 'All' && shop.category !== filters.category) return false;
+      if (filters.sub_category && filters.sub_category !== 'All' && shop.sub_category !== filters.sub_category) return false;
       if (filters.model !== 'All' && shop.model !== filters.model) return false;
       if (filters.willing_to_shelf && !shop.willing_to_shelf) return false;
       if (filters.visited && !shop.visited) return false;
@@ -98,6 +130,7 @@ function MapView() {
         style={{ height: "100vh", width: "100vw", cursor: isRadiusMode ? 'crosshair' : 'grab' }}
       >
         <ZoomTracker onChange={(z) => setZoom(z)} />
+        <FitToShops shops={shops} />
         <MapClickHandler
           isRadiusMode={isRadiusMode}
           setRadiusCenter={setRadiusCenter}
@@ -154,7 +187,8 @@ function MapView() {
                 <b>{shop.shop_name}</b>
                 <br />
                 Category: {shop.category}{shop.sub_category ? ` - ${shop.sub_category}` : ''}<br />
-                Model: {shop.model}<br />
+                Model: {shop.model || "N/A"}<br />
+                {shop.model === "Commission" ? "Commission" : "Rent"}: {formatPrice(shop)}<br />
                 Orders/Day: {shop.no_of_orders_per_day}<br />
                 Visited: {shop.visited ? "Yes" : "No"}<br />
                 Willing to Shelf: {shop.willing_to_shelf ? "Yes" : "No"}
@@ -164,7 +198,7 @@ function MapView() {
         })}
       </MapContainer>
 
-      <SidePanel shop={selectedShop} onClose={() => setSelectedShop(null)} />
+      <SidePanel shop={selectedShop} onClose={() => setSelectedShop(null)} onDeleted={handleDeleted} />
     </div>
   );
 }
